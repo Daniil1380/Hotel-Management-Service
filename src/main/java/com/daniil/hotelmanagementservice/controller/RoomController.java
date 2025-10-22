@@ -13,37 +13,58 @@ import java.util.List;
 @RequiredArgsConstructor
 public class RoomController {
 
-    private final RoomRepository roomRepository;
     private final RoomService roomService;
+    private final RoomRepository roomRepository;
 
+    /**
+     * Получить все доступные комнаты (информационный endpoint)
+     */
     @GetMapping
     @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public List<Room> getAvailableRooms() {
         return roomService.getAllAvailableRooms();
     }
 
-    @GetMapping("/recommend")
+    /**
+     * Алгоритм планирования: выбирает оптимальный номер (с наименьшим timesBooked)
+     * и временно блокирует его.
+     */
+    @GetMapping("/allocate")
     @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
-    public List<Room> getRecommendedRooms() {
-        return roomService.getRecommendedRooms();
+    public Long allocateRoom() {
+        return roomService.allocateRoom()
+                .map(Room::getId)
+                .orElse(null);
     }
 
-    @PostMapping("/{id}/confirm-availability")
+    /**
+     * Подтверждение бронирования — увеличивает счётчик timesBooked
+     * и снимает временную блокировку.
+     */
+    @PostMapping("/{id}/confirm")
     @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
-    public boolean confirmAvailability(@PathVariable Long id) {
-        return roomService.confirmAvailability(id);
+    public void confirmBooking(@PathVariable Long id) {
+        roomService.confirmBooking(id);
     }
 
+    /**
+     * Освободить комнату (при отмене бронирования или неудаче)
+     */
     @PostMapping("/{id}/release")
     @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public void releaseRoom(@PathVariable Long id) {
         roomService.releaseRoom(id);
     }
 
+    /**
+     * Создание новой комнаты (только админ)
+     */
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN')")
     public Room createRoom(@RequestBody Room room) {
         return roomRepository.save(room);
     }
 }
+
+
 

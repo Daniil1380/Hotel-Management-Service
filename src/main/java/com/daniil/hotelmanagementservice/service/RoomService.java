@@ -10,50 +10,59 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Comparator;
 import java.util.List;
 
+import com.daniil.hotelmanagementservice.entity.Room;
+import com.daniil.hotelmanagementservice.repository.RoomRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Optional;
+
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class RoomService {
 
     private final RoomRepository roomRepository;
 
-    public List<Room> getAllAvailableRooms() {
-        return roomRepository.findByAvailableTrue();
-    }
-
-    public List<Room> getRecommendedRooms() {
-        return roomRepository.findByAvailableTrue().stream()
-                .sorted(Comparator.comparingInt(Room::getTimesBooked)
-                        .thenComparing(Room::getId))
-                .toList();
+    @Transactional
+    public Optional<Room> allocateRoom() {
+        var availableRooms = roomRepository.findAndLockAvailableRooms();
+        if (availableRooms.isEmpty()) {
+            log.warn("No available rooms found!");
+            return Optional.empty();
+        }
+        Room room = availableRooms.get(0);
+        room.setTempLocked(true);
+        roomRepository.save(room);
+        log.info("Room {} allocated (timesBooked={}, available={})", room.getId(), room.getTimesBooked(), room.isAvailable());
+        return Optional.of(room);
     }
 
     @Transactional
-    public boolean confirmAvailability(Long roomId) {
-        return roomRepository.findById(roomId)
-                .filter(Room::isAvailable)
-                .filter(r -> !r.isTempLocked())
-                .map(r -> {
-                    r.setTempLocked(true);
-                    roomRepository.save(r);
-                    return true;
-                }).orElse(false);
+    public void confirmBooking(Long roomId) {
+        roomRepository.findById(roomId).ifPresent(room -> {
+            room.setTimesBooked(room.getTimesBooked() + 1);
+            room.setTempLocked(false);
+            roomRepository.save(room);
+            log.info("Room {} confirmed, timesBooked={}", roomId, room.getTimesBooked());
+        });
     }
 
     @Transactional
     public void releaseRoom(Long roomId) {
-        roomRepository.findById(roomId).ifPresent(r -> {
-            r.setTempLocked(false);
-            roomRepository.save(r);
+        roomRepository.findById(roomId).ifPresent(room -> {
+            room.setTempLocked(false);
+            roomRepository.save(room);
+            log.info("Room {} released", roomId);
         });
     }
 
-    @Transactional
-    public void incrementTimesBooked(Long roomId) {
-        roomRepository.findById(roomId).ifPresent(r -> {
-            r.setTimesBooked(r.getTimesBooked() + 1);
-            r.setTempLocked(false);
-            roomRepository.save(r);
-        });
+    @Transactional(readOnly = true)
+    public List<Room> getAllAvailableRooms() {
+        return roomRepository.findByAvailableTrue();
     }
 }
+
 
