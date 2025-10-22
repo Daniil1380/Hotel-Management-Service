@@ -5,6 +5,7 @@ package com.daniil.hotelmanagementservice.controller;
 import com.daniil.hotelmanagementservice.entity.Hotel;
 import com.daniil.hotelmanagementservice.repository.HotelRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -17,11 +18,13 @@ public class HotelController {
     private final HotelRepository hotelRepository;
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public List<Hotel> getAllHotels() {
         return hotelRepository.findAll();
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public Hotel createHotel(@RequestBody Hotel hotel) {
         return hotelRepository.save(hotel);
     }
