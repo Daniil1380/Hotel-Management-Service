@@ -15,7 +15,6 @@ import java.util.Map;
 public class RoomController {
 
     private final RoomService roomService;
-    private final RoomRepository roomRepository;
 
     /**
      * Получить все доступные комнаты (информационный endpoint)
@@ -63,7 +62,7 @@ public class RoomController {
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     public Room createRoom(@RequestBody Room room) {
-        return roomRepository.save(room);
+        return roomService.createRoom(room);
     }
 
     @GetMapping("/stats/searchRooms")
