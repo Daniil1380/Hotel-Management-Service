@@ -7,6 +7,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/rooms")
@@ -63,6 +64,25 @@ public class RoomController {
     @PreAuthorize("hasRole('ADMIN')")
     public Room createRoom(@RequestBody Room room) {
         return roomRepository.save(room);
+    }
+
+    @GetMapping("/stats/searchRooms")
+    @PreAuthorize("hasRole('ADMIN')")
+    public List<Room> searchRooms(
+            @RequestParam(required = false) Long hotelId,
+            @RequestParam(required = false) Boolean available,
+            @RequestParam(required = false) String number,
+            @RequestParam(defaultValue = "0") int minBooked,
+            @RequestParam(defaultValue = "1000") int maxBooked,
+            @RequestParam(defaultValue = "id") String sort) {
+
+        return roomService.searchRooms(hotelId, available, number, minBooked, maxBooked, sort);
+    }
+
+    @GetMapping("/stats/all")
+    @PreAuthorize("hasRole('ADMIN')")
+    public Map<String, Object> getStats() {
+        return roomService.getOccupancyStats();
     }
 }
 
